@@ -6,6 +6,10 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
@@ -39,8 +43,10 @@ public class SnakeGame {
         private Timer timer;
         private int[] food;
         private int score = 0;
+        private int highScore = 0;
         private boolean gameOver = false;
         private boolean isStarted = false;
+        private static final String HIGH_SCORE_FILE = "highscore.txt";
 
         private enum Direction {
             UP, DOWN, LEFT, RIGHT
@@ -51,6 +57,7 @@ public class SnakeGame {
             setFocusable(true);
             requestFocusInWindow();
             addKeyListener(this);
+            loadHighScore();
             initializeSnake();
             spawnFood();
             timer = new Timer(150, e -> move());
@@ -88,7 +95,37 @@ public class SnakeGame {
             return Math.max(50, 150 - score * 5);
         }
 
+        private void loadHighScore() {
+            try {
+                File file = new File(HIGH_SCORE_FILE);
+                if (file.exists()) {
+                    BufferedReader reader = new BufferedReader(new FileReader(file));
+                    String line = reader.readLine();
+                    if (line != null && !line.isEmpty()) {
+                        highScore = Integer.parseInt(line.trim());
+                    }
+                    reader.close();
+                }
+            } catch (Exception e) {
+                highScore = 0;
+            }
+        }
+
+        private void saveHighScore() {
+            try {
+                FileWriter writer = new FileWriter(HIGH_SCORE_FILE);
+                writer.write(String.valueOf(highScore));
+                writer.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
         private void resetGame() {
+            if (score > highScore) {
+                highScore = score;
+                saveHighScore();
+            }
             snake.clear();
             initializeSnake();
             direction = Direction.RIGHT;
@@ -170,7 +207,14 @@ public class SnakeGame {
                 String title = "Snake";
                 int titleWidth = fm.stringWidth(title);
                 g2d.setColor(Color.GREEN);
-                g2d.drawString(title, centerX - titleWidth / 2, 250);
+                g2d.drawString(title, centerX - titleWidth / 2, 200);
+
+                g2d.setFont(new Font("Arial", Font.PLAIN, 20));
+                fm = g2d.getFontMetrics();
+                String highScoreMsg = "High Score: " + highScore;
+                int highScoreWidth = fm.stringWidth(highScoreMsg);
+                g2d.setColor(Color.YELLOW);
+                g2d.drawString(highScoreMsg, centerX - highScoreWidth / 2, 260);
 
                 g2d.setFont(new Font("Arial", Font.PLAIN, 24));
                 fm = g2d.getFontMetrics();
@@ -215,15 +259,17 @@ public class SnakeGame {
 
                 String gameOverText = "Game Over";
                 String scoreText = "Final Score: " + score;
+                String highScoreText = "High Score: " + highScore;
                 String restartText = "Press R to Restart";
 
                 int gameOverWidth = fm.stringWidth(gameOverText);
                 int scoreWidth = fm.stringWidth(scoreText);
+                int highScoreWidth = fm.stringWidth(highScoreText);
                 int restartWidth = fm.stringWidth(restartText);
-                int maxWidth = Math.max(gameOverWidth, Math.max(scoreWidth, restartWidth));
+                int maxWidth = Math.max(gameOverWidth, Math.max(Math.max(scoreWidth, highScoreWidth), restartWidth));
 
                 int textHeight = fm.getHeight();
-                int totalHeight = textHeight * 3 + 10; // 3 lines + padding
+                int totalHeight = textHeight * 4 + 10; // 4 lines + padding
 
                 int boxX = centerX - maxWidth / 2 - 10;
                 int boxY = 270 - textHeight / 2 - 5;
@@ -238,7 +284,10 @@ public class SnakeGame {
                 g2d.setColor(Color.RED);
                 g2d.drawString(gameOverText, centerX - gameOverWidth / 2, 280);
                 g2d.drawString(scoreText, centerX - scoreWidth / 2, 310);
-                g2d.drawString(restartText, centerX - restartWidth / 2, 340);
+                g2d.setColor(Color.YELLOW);
+                g2d.drawString(highScoreText, centerX - highScoreWidth / 2, 335);
+                g2d.setColor(Color.RED);
+                g2d.drawString(restartText, centerX - restartWidth / 2, 360);
 
                 g2d.setFont(originalFont);
             }
