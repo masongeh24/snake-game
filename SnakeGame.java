@@ -44,7 +44,7 @@ public class SnakeGame {
         }
 
         public GamePanel() {
-            setBackground(Color.DARK_GRAY);
+            setBackground(Color.BLACK);
             setFocusable(true);
             requestFocusInWindow();
             addKeyListener(this);
