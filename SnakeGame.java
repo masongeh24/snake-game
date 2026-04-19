@@ -1,5 +1,7 @@
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
@@ -81,6 +83,10 @@ public class SnakeGame {
             }
         }
 
+        private int getDelay() {
+            return Math.max(50, 150 - score * 5);
+        }
+
         private void resetGame() {
             snake.clear();
             initializeSnake();
@@ -88,6 +94,7 @@ public class SnakeGame {
             score = 0;
             gameOver = false;
             spawnFood();
+            timer.setDelay(150);
             timer.start();
             repaint();
         }
@@ -138,6 +145,7 @@ public class SnakeGame {
             if (newX == food[0] && newY == food[1]) {
                 score++;
                 spawnFood();
+                timer.setDelay(getDelay());
                 // Don't remove tail, snake grows
             } else {
                 snake.remove(snake.size() - 1);
@@ -176,10 +184,25 @@ public class SnakeGame {
 
             // Draw game over
             if (gameOver) {
+                Font originalFont = g2d.getFont();
+                g2d.setFont(new Font("Arial", Font.BOLD, 24));
+                FontMetrics fm = g2d.getFontMetrics();
+                int centerX = getWidth() / 2;
+
+                String gameOverText = "Game Over";
+                int gameOverWidth = fm.stringWidth(gameOverText);
                 g2d.setColor(Color.RED);
-                g2d.drawString("Game Over", 250, 280);
-                g2d.drawString("Final Score: " + score, 240, 300);
-                g2d.drawString("Press R to Restart", 230, 320);
+                g2d.drawString(gameOverText, centerX - gameOverWidth / 2, 280);
+
+                String scoreText = "Final Score: " + score;
+                int scoreWidth = fm.stringWidth(scoreText);
+                g2d.drawString(scoreText, centerX - scoreWidth / 2, 310);
+
+                String restartText = "Press R to Restart";
+                int restartWidth = fm.stringWidth(restartText);
+                g2d.drawString(restartText, centerX - restartWidth / 2, 340);
+
+                g2d.setFont(originalFont);
             }
         }
 
