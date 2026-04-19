@@ -2,11 +2,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 
 public class SnakeGame {
     public static void main(String[] args) {
@@ -25,15 +28,26 @@ public class SnakeGame {
         });
     }
 
-    private static class GamePanel extends JPanel {
+    private static class GamePanel extends JPanel implements KeyListener {
         private static final int CELL_SIZE = 30;
         private static final int GRID_WIDTH = 20;
         private static final int GRID_HEIGHT = 20;
         private List<int[]> snake;
+        private Direction direction = Direction.RIGHT;
+        private Timer timer;
+
+        private enum Direction {
+            UP, DOWN, LEFT, RIGHT
+        }
 
         public GamePanel() {
             setBackground(Color.DARK_GRAY);
+            setFocusable(true);
+            requestFocusInWindow();
+            addKeyListener(this);
             initializeSnake();
+            timer = new Timer(150, e -> move());
+            timer.start();
         }
 
         private void initializeSnake() {
@@ -42,6 +56,37 @@ public class SnakeGame {
             snake.add(new int[]{10, 10}); // head
             snake.add(new int[]{9, 10});  // body
             snake.add(new int[]{8, 10});  // tail
+        }
+
+        private void move() {
+            int[] head = snake.get(0);
+            int newX = head[0];
+            int newY = head[1];
+
+            switch (direction) {
+                case UP:
+                    newY--;
+                    break;
+                case DOWN:
+                    newY++;
+                    break;
+                case LEFT:
+                    newX--;
+                    break;
+                case RIGHT:
+                    newX++;
+                    break;
+            }
+
+            // Wrap around edges
+            if (newX < 0) newX = GRID_WIDTH - 1;
+            else if (newX >= GRID_WIDTH) newX = 0;
+            if (newY < 0) newY = GRID_HEIGHT - 1;
+            else if (newY >= GRID_HEIGHT) newY = 0;
+
+            snake.add(0, new int[]{newX, newY});
+            snake.remove(snake.size() - 1);
+            repaint();
         }
 
         @Override
@@ -64,5 +109,30 @@ public class SnakeGame {
                 g2d.fillRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
+
+        @Override
+        public void keyPressed(KeyEvent e) {
+            int key = e.getKeyCode();
+            switch (key) {
+                case KeyEvent.VK_UP:
+                    if (direction != Direction.DOWN) direction = Direction.UP;
+                    break;
+                case KeyEvent.VK_DOWN:
+                    if (direction != Direction.UP) direction = Direction.DOWN;
+                    break;
+                case KeyEvent.VK_LEFT:
+                    if (direction != Direction.RIGHT) direction = Direction.LEFT;
+                    break;
+                case KeyEvent.VK_RIGHT:
+                    if (direction != Direction.LEFT) direction = Direction.RIGHT;
+                    break;
+            }
+        }
+
+        @Override
+        public void keyReleased(KeyEvent e) {}
+
+        @Override
+        public void keyTyped(KeyEvent e) {}
     }
 }
