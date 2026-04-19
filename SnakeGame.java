@@ -35,6 +35,9 @@ public class SnakeGame {
         private List<int[]> snake;
         private Direction direction = Direction.RIGHT;
         private Timer timer;
+        private int[] food;
+        private int score = 0;
+        private boolean gameOver = false;
 
         private enum Direction {
             UP, DOWN, LEFT, RIGHT
@@ -46,6 +49,7 @@ public class SnakeGame {
             requestFocusInWindow();
             addKeyListener(this);
             initializeSnake();
+            spawnFood();
             timer = new Timer(150, e -> move());
             timer.start();
         }
@@ -58,7 +62,39 @@ public class SnakeGame {
             snake.add(new int[]{8, 10});  // tail
         }
 
+        private void spawnFood() {
+            boolean placed = false;
+            while (!placed) {
+                int x = (int) (Math.random() * GRID_WIDTH);
+                int y = (int) (Math.random() * GRID_HEIGHT);
+                boolean occupied = false;
+                for (int[] segment : snake) {
+                    if (segment[0] == x && segment[1] == y) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                if (!occupied) {
+                    food = new int[]{x, y};
+                    placed = true;
+                }
+            }
+        }
+
+        private void resetGame() {
+            snake.clear();
+            initializeSnake();
+            direction = Direction.RIGHT;
+            score = 0;
+            gameOver = false;
+            spawnFood();
+            timer.start();
+            repaint();
+        }
+
         private void move() {
+            if (gameOver) return;
+
             int[] head = snake.get(0);
             int newX = head[0];
             int newY = head[1];
@@ -78,14 +114,35 @@ public class SnakeGame {
                     break;
             }
 
-            // Wrap around edges
-            if (newX < 0) newX = GRID_WIDTH - 1;
-            else if (newX >= GRID_WIDTH) newX = 0;
-            if (newY < 0) newY = GRID_HEIGHT - 1;
-            else if (newY >= GRID_HEIGHT) newY = 0;
+            // Check wall collision
+            if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
+                gameOver = true;
+                timer.stop();
+                repaint();
+                return;
+            }
+
+            // Check self collision
+            for (int[] segment : snake) {
+                if (segment[0] == newX && segment[1] == newY) {
+                    gameOver = true;
+                    timer.stop();
+                    repaint();
+                    return;
+                }
+            }
 
             snake.add(0, new int[]{newX, newY});
-            snake.remove(snake.size() - 1);
+
+            // Check if ate food
+            if (newX == food[0] && newY == food[1]) {
+                score++;
+                spawnFood();
+                // Don't remove tail, snake grows
+            } else {
+                snake.remove(snake.size() - 1);
+            }
+
             repaint();
         }
 
@@ -108,11 +165,33 @@ public class SnakeGame {
             for (int[] segment : snake) {
                 g2d.fillRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
+
+            // Draw food
+            g2d.setColor(Color.RED);
+            g2d.fillOval(food[0] * CELL_SIZE + 5, food[1] * CELL_SIZE + 5, CELL_SIZE - 10, CELL_SIZE - 10);
+
+            // Draw score
+            g2d.setColor(Color.WHITE);
+            g2d.drawString("Score: " + score, 10, 20);
+
+            // Draw game over
+            if (gameOver) {
+                g2d.setColor(Color.RED);
+                g2d.drawString("Game Over", 250, 280);
+                g2d.drawString("Final Score: " + score, 240, 300);
+                g2d.drawString("Press R to Restart", 230, 320);
+            }
         }
 
         @Override
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
+            if (gameOver) {
+                if (key == KeyEvent.VK_R) {
+                    resetGame();
+                }
+                return;
+            }
             switch (key) {
                 case KeyEvent.VK_UP:
                     if (direction != Direction.DOWN) direction = Direction.UP;
