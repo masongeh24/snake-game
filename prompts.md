@@ -54,3 +54,12 @@ Prompt 9: Add obstacles in the form of blue blocks that take up a grid space. Th
 
         Observation: The Agent put a limit of 50 tries for the obstacle to find an unoccupied place to spawn. I assume that eventually, the grid will fill up and there will be no way for more obstacles or pellets to spawn. Good thing I'm not good enough at snake to get that far lol.
 
+Prompt 10: Add squarewave sound to the game. Each time the snake changes direction, a particular note will play for half a second (G for right, C for down, D for left, A for up). Each time the snake eats an apple, a crunch-like sound will play, and when the snake runs into an obstacle, a two tone game over sound will play.
+
+        Result: 
+        
+        Fix 1: "Local variable freq is required to be final" errors. Fixed by changing the freq declaration to "final float freq:" to be compatible with the lambda expressions in the thread. Now that the program is running however, the SOUND IS VERY LOUD.
+        Fix 2: Manually adjusted the square wave amplitude to avoid blowing out my eardrums when playing. Testing the game, I am not hearing the sound that is supposed to be playing when the snake eats the food.
+        Fix 3: Prompt "It looks like there is a problem within the playCrunch method that causes them to not be heard, could it possibly be the frequency or duration and not the volume that is causing it."
+        
+        It was fixed by changing the output loop for the tones from a for to a while loop. It looks like the old for loop constraints didn't allow the shorter tones to play.

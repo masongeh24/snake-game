@@ -12,6 +12,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -130,6 +134,58 @@ public class SnakeGame {
             }
         }
 
+        private void playTone(float frequency, int durationMs) {
+            playTone(frequency, durationMs, 7);
+        }
+
+        private void playTone(float frequency, int durationMs, int amplitude) {
+            try {
+                AudioFormat af = new AudioFormat(44100, 8, 1, true, false);
+                SourceDataLine line = AudioSystem.getSourceDataLine(af);
+                line.open(af);
+                line.start();
+
+                byte[] buf = new byte[44100 / 10]; // 100ms buffer
+                for (int i = 0; i < buf.length; i++) {
+                    double angle = i / (44100.0 / frequency) * 2.0 * Math.PI;
+                    buf[i] = (byte) (Math.signum(Math.sin(angle)) * amplitude);
+                }
+
+                int samples = (int) ((durationMs / 1000.0) * 44100);
+                int remaining = samples;
+                while (remaining > 0) {
+                    int chunk = Math.min(buf.length, remaining);
+                    line.write(buf, 0, chunk);
+                    remaining -= chunk;
+                }
+
+                line.drain();
+                line.close();
+            } catch (LineUnavailableException e) {
+                // Sound not available, ignore
+            }
+        }
+
+        private void playCrunch() {
+            // Play a short crunch sound: multiple quick tones
+            new Thread(() -> {
+                playTone(200, 50, 20);
+                try { Thread.sleep(20); } catch (InterruptedException e) {}
+                playTone(150, 50, 20);
+                try { Thread.sleep(20); } catch (InterruptedException e) {}
+                playTone(100, 50, 20);
+            }).start();
+        }
+
+        private void playGameOver() {
+            // Two-tone game over sound
+            new Thread(() -> {
+                playTone(150, 300);
+                try { Thread.sleep(100); } catch (InterruptedException e) {}
+                playTone(100, 500);
+            }).start();
+        }
+
         private int getDelay() {
             return Math.max(50, 150 - score * 5);
         }
@@ -203,6 +259,7 @@ public class SnakeGame {
             if (newX < 0 || newX >= GRID_WIDTH || newY < 0 || newY >= GRID_HEIGHT) {
                 gameOver = true;
                 timer.stop();
+                playGameOver();
                 repaint();
                 return;
             }
@@ -212,6 +269,7 @@ public class SnakeGame {
                 if (segment[0] == newX && segment[1] == newY) {
                     gameOver = true;
                     timer.stop();
+                    playGameOver();
                     repaint();
                     return;
                 }
@@ -222,6 +280,7 @@ public class SnakeGame {
                 if (obstacle[0] == newX && obstacle[1] == newY) {
                     gameOver = true;
                     timer.stop();
+                    playGameOver();
                     repaint();
                     return;
                 }
@@ -235,6 +294,7 @@ public class SnakeGame {
                 spawnFood();
                 spawnObstacle();
                 timer.setDelay(getDelay());
+                playCrunch();
                 // Don't remove tail, snake grows
             } else {
                 snake.remove(snake.size() - 1);
@@ -364,6 +424,7 @@ public class SnakeGame {
                 }
                 return;
             }
+            Direction oldDirection = direction;
             switch (key) {
                 case KeyEvent.VK_UP:
                     if (direction != Direction.DOWN) direction = Direction.UP;
@@ -377,6 +438,20 @@ public class SnakeGame {
                 case KeyEvent.VK_RIGHT:
                     if (direction != Direction.LEFT) direction = Direction.RIGHT;
                     break;
+            }
+            // Play direction sound if changed
+            if (direction != oldDirection) {
+                final float freq;
+                switch (direction) {
+                    case UP: freq = 440; break; // A
+                    case DOWN: freq = 261; break; // C
+                    case LEFT: freq = 293; break; // D
+                    case RIGHT: freq = 392; break; // G
+                    default: freq = 0; break;
+                }
+                if (freq > 0) {
+                    new Thread(() -> playTone(freq, 500)).start();
+                }
             }
         }
 
