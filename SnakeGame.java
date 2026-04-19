@@ -40,6 +40,7 @@ public class SnakeGame {
         private int[] food;
         private int score = 0;
         private boolean gameOver = false;
+        private boolean isStarted = false;
 
         private enum Direction {
             UP, DOWN, LEFT, RIGHT
@@ -53,7 +54,7 @@ public class SnakeGame {
             initializeSnake();
             spawnFood();
             timer = new Timer(150, e -> move());
-            timer.start();
+
         }
 
         private void initializeSnake() {
@@ -159,6 +160,29 @@ public class SnakeGame {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
 
+            if (!isStarted) {
+                // Draw start screen
+                Font originalFont = g2d.getFont();
+                g2d.setFont(new Font("Arial", Font.BOLD, 48));
+                FontMetrics fm = g2d.getFontMetrics();
+                int centerX = getWidth() / 2;
+
+                String title = "Snake";
+                int titleWidth = fm.stringWidth(title);
+                g2d.setColor(Color.GREEN);
+                g2d.drawString(title, centerX - titleWidth / 2, 250);
+
+                g2d.setFont(new Font("Arial", Font.PLAIN, 24));
+                fm = g2d.getFontMetrics();
+                String startMsg = "Press any key to start";
+                int msgWidth = fm.stringWidth(startMsg);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(startMsg, centerX - msgWidth / 2, 320);
+
+                g2d.setFont(originalFont);
+                return;
+            }
+
             // Draw grid lines
             g2d.setColor(Color.GRAY);
             for (int i = 0; i <= GRID_WIDTH; i++) {
@@ -190,16 +214,30 @@ public class SnakeGame {
                 int centerX = getWidth() / 2;
 
                 String gameOverText = "Game Over";
+                String scoreText = "Final Score: " + score;
+                String restartText = "Press R to Restart";
+
                 int gameOverWidth = fm.stringWidth(gameOverText);
+                int scoreWidth = fm.stringWidth(scoreText);
+                int restartWidth = fm.stringWidth(restartText);
+                int maxWidth = Math.max(gameOverWidth, Math.max(scoreWidth, restartWidth));
+
+                int textHeight = fm.getHeight();
+                int totalHeight = textHeight * 3 + 10; // 3 lines + padding
+
+                int boxX = centerX - maxWidth / 2 - 10;
+                int boxY = 270 - textHeight / 2 - 5;
+                int boxWidth = maxWidth + 20;
+                int boxHeight = totalHeight + 10;
+
+                // Draw black box
+                g2d.setColor(Color.BLACK);
+                g2d.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+                // Draw text
                 g2d.setColor(Color.RED);
                 g2d.drawString(gameOverText, centerX - gameOverWidth / 2, 280);
-
-                String scoreText = "Final Score: " + score;
-                int scoreWidth = fm.stringWidth(scoreText);
                 g2d.drawString(scoreText, centerX - scoreWidth / 2, 310);
-
-                String restartText = "Press R to Restart";
-                int restartWidth = fm.stringWidth(restartText);
                 g2d.drawString(restartText, centerX - restartWidth / 2, 340);
 
                 g2d.setFont(originalFont);
@@ -208,6 +246,11 @@ public class SnakeGame {
 
         @Override
         public void keyPressed(KeyEvent e) {
+            if (!isStarted) {
+                isStarted = true;
+                timer.start();
+                return;
+            }
             int key = e.getKeyCode();
             if (gameOver) {
                 if (key == KeyEvent.VK_R) {
