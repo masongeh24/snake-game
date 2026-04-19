@@ -47,6 +47,7 @@ public class SnakeGame {
         private boolean gameOver = false;
         private boolean isStarted = false;
         private static final String HIGH_SCORE_FILE = "highscore.txt";
+        private List<int[]> obstacles;
 
         private enum Direction {
             UP, DOWN, LEFT, RIGHT
@@ -59,6 +60,7 @@ public class SnakeGame {
             addKeyListener(this);
             loadHighScore();
             initializeSnake();
+            obstacles = new ArrayList<>();
             spawnFood();
             timer = new Timer(150, e -> move());
 
@@ -88,6 +90,43 @@ public class SnakeGame {
                     food = new int[]{x, y};
                     placed = true;
                 }
+            }
+        }
+
+        private void spawnObstacle() {
+            // 35% chance to spawn an obstacle
+            if (Math.random() > 0.35) {
+                return;
+            }
+            boolean placed = false;
+            int attempts = 0;
+            while (!placed && attempts < 50) {
+                int x = (int) (Math.random() * GRID_WIDTH);
+                int y = (int) (Math.random() * GRID_HEIGHT);
+                boolean occupied = false;
+
+                // Check if position is on snake or food
+                for (int[] segment : snake) {
+                    if (segment[0] == x && segment[1] == y) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                if (x == food[0] && y == food[1]) {
+                    occupied = true;
+                }
+
+                // Check if position is too close to snake head (within 1 cell)
+                int[] head = snake.get(0);
+                if (Math.abs(x - head[0]) <= 1 && Math.abs(y - head[1]) <= 1) {
+                    occupied = true;
+                }
+
+                if (!occupied) {
+                    obstacles.add(new int[]{x, y});
+                    placed = true;
+                }
+                attempts++;
             }
         }
 
@@ -127,6 +166,7 @@ public class SnakeGame {
                 saveHighScore();
             }
             snake.clear();
+            obstacles.clear();
             initializeSnake();
             direction = Direction.RIGHT;
             score = 0;
@@ -177,12 +217,23 @@ public class SnakeGame {
                 }
             }
 
+            // Check obstacle collision
+            for (int[] obstacle : obstacles) {
+                if (obstacle[0] == newX && obstacle[1] == newY) {
+                    gameOver = true;
+                    timer.stop();
+                    repaint();
+                    return;
+                }
+            }
+
             snake.add(0, new int[]{newX, newY});
 
             // Check if ate food
             if (newX == food[0] && newY == food[1]) {
                 score++;
                 spawnFood();
+                spawnObstacle();
                 timer.setDelay(getDelay());
                 // Don't remove tail, snake grows
             } else {
@@ -240,6 +291,12 @@ public class SnakeGame {
             g2d.setColor(Color.GREEN);
             for (int[] segment : snake) {
                 g2d.fillRect(segment[0] * CELL_SIZE, segment[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+
+            // Draw obstacles
+            g2d.setColor(Color.BLUE);
+            for (int[] obstacle : obstacles) {
+                g2d.fillRect(obstacle[0] * CELL_SIZE, obstacle[1] * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
 
             // Draw food

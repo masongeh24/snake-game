@@ -48,4 +48,9 @@ Prompt 8: Check at the end of a game if the score is higher than the high score.
         Observation: I had an idea that the Agent would create a file to store the information. It is interesting to see all the different checks that need to be done in the loadHighScore method just to be sure it doesn't crash the program if it isn't there.
         I was also curious to see what would happen if I deleted the txt file, because I saw that the Agent put in exceptions. If there isn't a file, or anything other than a number below the integer limit, the game creates/replaces it with the current score if saving, and returns 0 for the high score if loading.
 
-Prompt 9: 
+Prompt 9: Add obstacles in the form of blue blocks that take up a grid space. They have a chance to generate when eating a pellet, and they do not generate right in front of or immediately surrounding the snake for fairness.
+
+        Result: Obstacles added as an object like the snake and pellets. They have collision like the snake/walls, and spawn randomly like the pellets. They have a 35% chance to spawn each time a pellet is eaten. They cannot spawn in a space with a pellet or the snake. They also will not spawn within a block of the snake's head to be fair to the player.
+
+        Observation: The Agent put a limit of 50 tries for the obstacle to find an unoccupied place to spawn. I assume that eventually, the grid will fill up and there will be no way for more obstacles or pellets to spawn. Good thing I'm not good enough at snake to get that far lol.
+
