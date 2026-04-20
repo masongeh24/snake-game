@@ -1,0 +1,10 @@
+volume=3
+score=0
+highScore=26
+direction=RIGHT
+isStarted=true
+paused=true
+gameOver=false
+food=1,2
+snake=14,10;13,10;12,10
+obstacles=

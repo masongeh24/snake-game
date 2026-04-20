@@ -73,3 +73,8 @@ Prompt 11: Add a pause menu that can be accessed while the game is running by pr
         Result: Sound controller is now satisfactory.  
 
         Fix 2: I noticed that every once in a while, the pellet and obstacle will spawn at the same time and end up in the same grid. I added an extra check in the spawnFood method so that it detects the obstacles the same way as it detects not to spawn inside the snake. I haven't seen this bug come up again, so hopefully having both the food and the obstacles checking themselves will prevent any more overlapping.
+
+Prompt 12: In the options menu (Make the options menu and the options in the pause menu go to the same menu) add save/load buttons to save the settings and current status of the game to a txt file
+
+        Result: In a similar, but much more complex way than the highscore file, the snake_save file stores the data of the snake game by parsing the given parameters of the txt file, then applying it to the game to load progress.
+

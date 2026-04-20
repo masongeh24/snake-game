@@ -57,7 +57,10 @@ public class SnakeGame {
         private boolean isStarted = false;
         private int startMenuSelection = 0;
         private static final String HIGH_SCORE_FILE = "highscore.txt";
+        private static final String SAVE_FILE = "snake_save.txt";
         private List<int[]> obstacles;
+        private int optionsMenuSelection = 0;
+        private String optionsMessage = "";
 
         private enum Direction {
             UP, DOWN, LEFT, RIGHT
@@ -265,6 +268,105 @@ public class SnakeGame {
             }
         }
 
+        private void saveGameState() {
+            try (FileWriter writer = new FileWriter(SAVE_FILE)) {
+                writer.write("volume=" + volumeLevel + "\n");
+                writer.write("score=" + score + "\n");
+                writer.write("highScore=" + highScore + "\n");
+                writer.write("direction=" + direction.name() + "\n");
+                writer.write("isStarted=" + isStarted + "\n");
+                writer.write("paused=" + paused + "\n");
+                writer.write("gameOver=" + gameOver + "\n");
+                writer.write("food=" + food[0] + "," + food[1] + "\n");
+                writer.write("snake=");
+                for (int i = 0; i < snake.size(); i++) {
+                    int[] segment = snake.get(i);
+                    writer.write(segment[0] + "," + segment[1]);
+                    if (i < snake.size() - 1) {
+                        writer.write(";");
+                    }
+                }
+                writer.write("\n");
+                writer.write("obstacles=");
+                for (int i = 0; i < obstacles.size(); i++) {
+                    int[] obstacle = obstacles.get(i);
+                    writer.write(obstacle[0] + "," + obstacle[1]);
+                    if (i < obstacles.size() - 1) {
+                        writer.write(";");
+                    }
+                }
+                writer.write("\n");
+                optionsMessage = "Game state saved to " + SAVE_FILE;
+            } catch (Exception e) {
+                optionsMessage = "Failed to save game state.";
+            }
+        }
+
+        private void loadGameState() {
+            try {
+                File file = new File(SAVE_FILE);
+                if (!file.exists()) {
+                    optionsMessage = "Save file not found.";
+                    return;
+                }
+                BufferedReader reader = new BufferedReader(new FileReader(file));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("volume=")) {
+                        volumeLevel = Integer.parseInt(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("score=")) {
+                        score = Integer.parseInt(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("highScore=")) {
+                        highScore = Integer.parseInt(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("direction=")) {
+                        direction = Direction.valueOf(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("isStarted=")) {
+                        isStarted = Boolean.parseBoolean(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("paused=")) {
+                        paused = Boolean.parseBoolean(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("gameOver=")) {
+                        gameOver = Boolean.parseBoolean(line.substring(line.indexOf('=') + 1));
+                    } else if (line.startsWith("food=")) {
+                        String[] parts = line.substring(line.indexOf('=') + 1).split(",");
+                        food = new int[]{Integer.parseInt(parts[0]), Integer.parseInt(parts[1])};
+                    } else if (line.startsWith("snake=")) {
+                        snake.clear();
+                        String[] segments = line.substring(line.indexOf('=') + 1).split(";");
+                        for (String segment : segments) {
+                            if (segment.isEmpty()) continue;
+                            String[] coords = segment.split(",");
+                            snake.add(new int[]{Integer.parseInt(coords[0]), Integer.parseInt(coords[1])});
+                        }
+                    } else if (line.startsWith("obstacles=")) {
+                        obstacles.clear();
+                        String[] items = line.substring(line.indexOf('=') + 1).split(";");
+                        for (String item : items) {
+                            if (item.isEmpty()) continue;
+                            String[] coords = item.split(",");
+                            obstacles.add(new int[]{Integer.parseInt(coords[0]), Integer.parseInt(coords[1])});
+                        }
+                    }
+                }
+                reader.close();
+                if (!isStarted) {
+                    isStarted = true;
+                }
+                if (paused || gameOver) {
+                    timer.stop();
+                } else {
+                    timer.setDelay(getDelay());
+                    timer.start();
+                }
+                optionsMessage = "Game state loaded from " + SAVE_FILE;
+            } catch (Exception e) {
+                optionsMessage = "Failed to load game state.";
+            }
+            inOptionsMenu = true;
+            adjustingVolume = false;
+            optionsMenuSelection = 0;
+            repaint();
+        }
+
         private void resetGame() {
             if (score > highScore) {
                 highScore = score;
@@ -373,17 +475,32 @@ public class SnakeGame {
                 String title = "Options Menu";
                 int titleWidth = fm.stringWidth(title);
                 g2d.setColor(Color.WHITE);
-                g2d.drawString(title, centerX - titleWidth / 2, 200);
+                g2d.drawString(title, centerX - titleWidth / 2, 140);
 
                 g2d.setFont(new Font("Arial", Font.PLAIN, 20));
                 fm = g2d.getFontMetrics();
-                String message = "(Empty for now)";
-                int messageWidth = fm.stringWidth(message);
-                g2d.drawString(message, centerX - messageWidth / 2, 240);
+                String statusText = "   Score: " + score;
+                int statusWidth = fm.stringWidth(statusText);
+                g2d.drawString(statusText, centerX - statusWidth / 2, 190);
 
-                String helpText = "Press ESC to return";
+                String[] menuOptions = {"Save Game", "Load Game", "Back"};
+                int menuStartY = 240;
+                for (int i = 0; i < menuOptions.length; i++) {
+                    g2d.setColor(optionsMenuSelection == i ? Color.YELLOW : Color.WHITE);
+                    g2d.drawString(menuOptions[i], centerX - fm.stringWidth(menuOptions[i]) / 2, menuStartY + i * 40);
+                }
+
+                String helpText = "Use UP/DOWN, ENTER to choose, ESC to return";
                 int helpWidth = fm.stringWidth(helpText);
-                g2d.drawString(helpText, centerX - helpWidth / 2, 280);
+                g2d.setColor(Color.LIGHT_GRAY);
+                g2d.drawString(helpText, centerX - helpWidth / 2, menuStartY + menuOptions.length * 40 + 30);
+
+                if (!optionsMessage.isEmpty()) {
+                    g2d.setColor(Color.GREEN);
+                    int messageWidth = fm.stringWidth(optionsMessage);
+                    g2d.drawString(optionsMessage, centerX - messageWidth / 2, menuStartY + menuOptions.length * 40 + 60);
+                }
+
                 g2d.setFont(originalFont);
                 return;
             }
@@ -498,28 +615,6 @@ public class SnakeGame {
                 g2d.setFont(originalFont);
             }
 
-            // Draw options menu if in options
-            if (inOptionsMenu) {
-                g2d.setColor(Color.BLACK);
-                g2d.fillRect(0, 0, getWidth(), getHeight());
-                Font originalFont = g2d.getFont();
-                g2d.setFont(new Font("Arial", Font.BOLD, 36));
-                FontMetrics fm = g2d.getFontMetrics();
-                int centerX = getWidth() / 2;
-
-                String title = "Options";
-                int titleWidth = fm.stringWidth(title);
-                g2d.setColor(Color.WHITE);
-                g2d.drawString(title, centerX - titleWidth / 2, 200);
-
-                g2d.setFont(new Font("Arial", Font.PLAIN, 20));
-                fm = g2d.getFontMetrics();
-                String backMsg = "Press ESC to go back";
-                int backWidth = fm.stringWidth(backMsg);
-                g2d.drawString(backMsg, centerX - backWidth / 2, 300);
-
-                g2d.setFont(originalFont);
-            }
 
             // Draw game over
             if (gameOver) {
@@ -580,6 +675,8 @@ public class SnakeGame {
                         timer.start();
                     } else {
                         inOptionsMenu = true;
+                        optionsMenuSelection = 0;
+                        optionsMessage = "";
                     }
                     repaint();
                 }
@@ -590,6 +687,32 @@ public class SnakeGame {
                 if (key == KeyEvent.VK_ESCAPE) {
                     inOptionsMenu = false;
                     repaint();
+                    return;
+                }
+                if (key == KeyEvent.VK_UP) {
+                    optionsMenuSelection = (optionsMenuSelection + 2) % 3;
+                    repaint();
+                    return;
+                }
+                if (key == KeyEvent.VK_DOWN) {
+                    optionsMenuSelection = (optionsMenuSelection + 1) % 3;
+                    repaint();
+                    return;
+                }
+                if (key == KeyEvent.VK_ENTER) {
+                    switch (optionsMenuSelection) {
+                        case 0:
+                            saveGameState();
+                            break;
+                        case 1:
+                            loadGameState();
+                            break;
+                        case 2:
+                            inOptionsMenu = false;
+                            break;
+                    }
+                    repaint();
+                    return;
                 }
                 return;
             }
@@ -638,6 +761,8 @@ public class SnakeGame {
                             break;
                         case 2:
                             inOptionsMenu = true;
+                            optionsMenuSelection = 0;
+                            optionsMessage = "";
                             break;
                         case 3:
                             exitToMainMenu();
