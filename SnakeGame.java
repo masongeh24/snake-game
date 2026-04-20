@@ -48,8 +48,14 @@ public class SnakeGame {
         private int[] food;
         private int score = 0;
         private int highScore = 0;
+        private int volumeLevel = 3; // 0-10
+        private boolean paused = false;
+        private boolean inOptionsMenu = false;
+        private boolean adjustingVolume = false;
+        private int pauseSelection = 0;
         private boolean gameOver = false;
         private boolean isStarted = false;
+        private int startMenuSelection = 0;
         private static final String HIGH_SCORE_FILE = "highscore.txt";
         private List<int[]> obstacles;
 
@@ -86,6 +92,12 @@ public class SnakeGame {
                 boolean occupied = false;
                 for (int[] segment : snake) {
                     if (segment[0] == x && segment[1] == y) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                for (int[] obstacle : obstacles) {
+                    if (obstacle[0] == x && obstacle[1] == y) {
                         occupied = true;
                         break;
                     }
@@ -135,7 +147,7 @@ public class SnakeGame {
         }
 
         private void playTone(float frequency, int durationMs) {
-            playTone(frequency, durationMs, 7);
+            playTone(frequency, durationMs, getAmplitude());
         }
 
         private void playTone(float frequency, int durationMs, int amplitude) {
@@ -166,6 +178,26 @@ public class SnakeGame {
             }
         }
 
+        private void exitToMainMenu() {
+            if (score > highScore) {
+                highScore = score;
+                saveHighScore();
+            }
+            snake.clear();
+            obstacles.clear();
+            initializeSnake();
+            direction = Direction.RIGHT;
+            score = 0;
+            gameOver = false;
+            paused = false;
+            inOptionsMenu = false;
+            adjustingVolume = false;
+            pauseSelection = 0;
+            isStarted = false;
+            timer.stop();
+            repaint();
+        }
+
         private void playCrunch() {
             // Play a short crunch sound: multiple quick tones
             new Thread(() -> {
@@ -188,6 +220,23 @@ public class SnakeGame {
 
         private int getDelay() {
             return Math.max(50, 150 - score * 5);
+        }
+
+        private int getAmplitude() {
+            return Math.max(1, volumeLevel * 3);
+        }
+
+        private void togglePause() {
+            if (!isStarted || gameOver) {
+                return;
+            }
+            paused = !paused;
+            if (paused) {
+                timer.stop();
+            } else {
+                timer.start();
+            }
+            repaint();
         }
 
         private void loadHighScore() {
@@ -227,6 +276,10 @@ public class SnakeGame {
             direction = Direction.RIGHT;
             score = 0;
             gameOver = false;
+            paused = false;
+            inOptionsMenu = false;
+            adjustingVolume = false;
+            pauseSelection = 0;
             spawnFood();
             timer.setDelay(150);
             timer.start();
@@ -234,7 +287,7 @@ public class SnakeGame {
         }
 
         private void move() {
-            if (gameOver) return;
+            if (gameOver || paused) return;
 
             int[] head = snake.get(0);
             int newX = head[0];
@@ -308,6 +361,33 @@ public class SnakeGame {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
 
+            if (inOptionsMenu) {
+                g2d.setColor(Color.BLACK);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+
+                Font originalFont = g2d.getFont();
+                g2d.setFont(new Font("Arial", Font.BOLD, 36));
+                FontMetrics fm = g2d.getFontMetrics();
+                int centerX = getWidth() / 2;
+
+                String title = "Options Menu";
+                int titleWidth = fm.stringWidth(title);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(title, centerX - titleWidth / 2, 200);
+
+                g2d.setFont(new Font("Arial", Font.PLAIN, 20));
+                fm = g2d.getFontMetrics();
+                String message = "(Empty for now)";
+                int messageWidth = fm.stringWidth(message);
+                g2d.drawString(message, centerX - messageWidth / 2, 240);
+
+                String helpText = "Press ESC to return";
+                int helpWidth = fm.stringWidth(helpText);
+                g2d.drawString(helpText, centerX - helpWidth / 2, 280);
+                g2d.setFont(originalFont);
+                return;
+            }
+
             if (!isStarted) {
                 // Draw start screen
                 Font originalFont = g2d.getFont();
@@ -329,10 +409,12 @@ public class SnakeGame {
 
                 g2d.setFont(new Font("Arial", Font.PLAIN, 24));
                 fm = g2d.getFontMetrics();
-                String startMsg = "Press any key to start";
-                int msgWidth = fm.stringWidth(startMsg);
-                g2d.setColor(Color.WHITE);
-                g2d.drawString(startMsg, centerX - msgWidth / 2, 320);
+                String[] options = {"Start Game", "Options"};
+                for (int i = 0; i < options.length; i++) {
+                    g2d.setColor(i == startMenuSelection ? Color.GREEN : Color.WHITE);
+                    int optionWidth = fm.stringWidth(options[i]);
+                    g2d.drawString(options[i], centerX - optionWidth / 2, 320 + i * 40);
+                }
 
                 g2d.setFont(originalFont);
                 return;
@@ -366,6 +448,78 @@ public class SnakeGame {
             // Draw score
             g2d.setColor(Color.WHITE);
             g2d.drawString("Score: " + score, 10, 20);
+
+            // Draw pause overlay if paused
+            if (paused) {
+                Font originalFont = g2d.getFont();
+                g2d.setFont(new Font("Arial", Font.BOLD, 28));
+                FontMetrics fm = g2d.getFontMetrics();
+                int centerX = getWidth() / 2;
+
+                String title = "Paused";
+                String resumeText = "Resume";
+                String volumeText = "Adjust Volume: " + volumeLevel;
+                String optionsText = "Options Menu";
+                String exitText = "Exit to Main Menu";
+
+                int maxWidth = Math.max(fm.stringWidth(title), Math.max(Math.max(fm.stringWidth(resumeText), fm.stringWidth(volumeText)), Math.max(fm.stringWidth(optionsText), fm.stringWidth(exitText))));
+                int textHeight = fm.getHeight();
+                int totalHeight = textHeight * 6 + 80; // Include an extra line for volume instructions
+                int boxX = centerX - maxWidth / 2 - 20;
+                int boxY = 180;
+                int boxWidth = maxWidth + 40;
+                int boxHeight = totalHeight;
+
+                g2d.setColor(Color.BLACK);
+                g2d.fillRect(boxX, boxY, boxWidth, boxHeight);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(title, centerX - fm.stringWidth(title) / 2, boxY + textHeight + 10);
+
+                g2d.setFont(new Font("Arial", Font.PLAIN, 20));
+                fm = g2d.getFontMetrics();
+                int itemY = boxY + textHeight * 2 + 10;
+                String[] items = {resumeText, volumeText, optionsText, exitText};
+                for (int i = 0; i < items.length; i++) {
+                    if (pauseSelection == i && !adjustingVolume) {
+                        g2d.setColor(Color.YELLOW);
+                    } else {
+                        g2d.setColor(Color.WHITE);
+                    }
+                    g2d.drawString(items[i], centerX - fm.stringWidth(items[i]) / 2, itemY + i * (textHeight + 10));
+                }
+
+                if (adjustingVolume || pauseSelection == 1) {
+                    String adjustText = "Use LEFT/RIGHT to change, ENTER to confirm";
+                    int adjustWidth = fm.stringWidth(adjustText);
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString(adjustText, centerX - adjustWidth / 2, boxY + boxHeight - 20);
+                }
+
+                g2d.setFont(originalFont);
+            }
+
+            // Draw options menu if in options
+            if (inOptionsMenu) {
+                g2d.setColor(Color.BLACK);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
+                Font originalFont = g2d.getFont();
+                g2d.setFont(new Font("Arial", Font.BOLD, 36));
+                FontMetrics fm = g2d.getFontMetrics();
+                int centerX = getWidth() / 2;
+
+                String title = "Options";
+                int titleWidth = fm.stringWidth(title);
+                g2d.setColor(Color.WHITE);
+                g2d.drawString(title, centerX - titleWidth / 2, 200);
+
+                g2d.setFont(new Font("Arial", Font.PLAIN, 20));
+                fm = g2d.getFontMetrics();
+                String backMsg = "Press ESC to go back";
+                int backWidth = fm.stringWidth(backMsg);
+                g2d.drawString(backMsg, centerX - backWidth / 2, 300);
+
+                g2d.setFont(originalFont);
+            }
 
             // Draw game over
             if (gameOver) {
@@ -412,18 +566,93 @@ public class SnakeGame {
 
         @Override
         public void keyPressed(KeyEvent e) {
+            int key = e.getKeyCode();
             if (!isStarted) {
-                isStarted = true;
-                timer.start();
+                if (key == KeyEvent.VK_UP) {
+                    startMenuSelection = (startMenuSelection + 1) % 2;
+                    repaint();
+                } else if (key == KeyEvent.VK_DOWN) {
+                    startMenuSelection = (startMenuSelection + 1) % 2;
+                    repaint();
+                } else if (key == KeyEvent.VK_ENTER) {
+                    if (startMenuSelection == 0) {
+                        isStarted = true;
+                        timer.start();
+                    } else {
+                        inOptionsMenu = true;
+                    }
+                    repaint();
+                }
                 return;
             }
-            int key = e.getKeyCode();
+
+            if (inOptionsMenu) {
+                if (key == KeyEvent.VK_ESCAPE) {
+                    inOptionsMenu = false;
+                    repaint();
+                }
+                return;
+            }
+
             if (gameOver) {
                 if (key == KeyEvent.VK_R) {
                     resetGame();
                 }
                 return;
             }
+
+            if (paused) {
+                if (key == KeyEvent.VK_SPACE || key == KeyEvent.VK_ESCAPE) {
+                    togglePause();
+                    return;
+                }
+                if (adjustingVolume) {
+                    if (key == KeyEvent.VK_LEFT && volumeLevel > 0) {
+                        volumeLevel--;
+                    } else if (key == KeyEvent.VK_RIGHT && volumeLevel < 10) {
+                        volumeLevel++;
+                    } else if (key == KeyEvent.VK_ENTER) {
+                        adjustingVolume = false;
+                    }
+                    repaint();
+                    return;
+                }
+
+                if (key == KeyEvent.VK_UP) {
+                    pauseSelection = (pauseSelection + 3) % 4;
+                    repaint();
+                    return;
+                }
+                if (key == KeyEvent.VK_DOWN) {
+                    pauseSelection = (pauseSelection + 1) % 4;
+                    repaint();
+                    return;
+                }
+                if (key == KeyEvent.VK_ENTER) {
+                    switch (pauseSelection) {
+                        case 0:
+                            togglePause();
+                            break;
+                        case 1:
+                            adjustingVolume = true;
+                            break;
+                        case 2:
+                            inOptionsMenu = true;
+                            break;
+                        case 3:
+                            exitToMainMenu();
+                            break;
+                    }
+                    return;
+                }
+                return;
+            }
+
+            if (key == KeyEvent.VK_SPACE) {
+                togglePause();
+                return;
+            }
+
             Direction oldDirection = direction;
             switch (key) {
                 case KeyEvent.VK_UP:
@@ -450,7 +679,7 @@ public class SnakeGame {
                     default: freq = 0; break;
                 }
                 if (freq > 0) {
-                    new Thread(() -> playTone(freq, 500)).start();
+                    new Thread(() -> playTone(freq, 250)).start();
                 }
             }
         }

@@ -56,10 +56,20 @@ Prompt 9: Add obstacles in the form of blue blocks that take up a grid space. Th
 
 Prompt 10: Add squarewave sound to the game. Each time the snake changes direction, a particular note will play for half a second (G for right, C for down, D for left, A for up). Each time the snake eats an apple, a crunch-like sound will play, and when the snake runs into an obstacle, a two tone game over sound will play.
 
-        Result: 
+        Result: A method to play tones was added with controllable properties like amplitude, frequency, and duration. Using the AudioFormat class set to a particular setting allowed the outputted sound to output squarewave sound effects.
         
         Fix 1: "Local variable freq is required to be final" errors. Fixed by changing the freq declaration to "final float freq:" to be compatible with the lambda expressions in the thread. Now that the program is running however, the SOUND IS VERY LOUD.
         Fix 2: Manually adjusted the square wave amplitude to avoid blowing out my eardrums when playing. Testing the game, I am not hearing the sound that is supposed to be playing when the snake eats the food.
         Fix 3: Prompt "It looks like there is a problem within the playCrunch method that causes them to not be heard, could it possibly be the frequency or duration and not the volume that is causing it."
         
         It was fixed by changing the output loop for the tones from a for to a while loop. It looks like the old for loop constraints didn't allow the shorter tones to play.
+
+Prompt 11: Add a pause menu that can be accessed while the game is running by pressing space (like the game over text but white, and draw a black box behind the text so it can be seen), and used to exit to the main menu, adjust the volume of the game, or go into an options menu. (keep the options menu empty for now but draw the whole window with a black background when in the options menu).
+
+        Result: Adjusted the sound input so that the menu sound option can control the volume of the game and then the sound can getAmplitude. Also added a togglePause method so that game can be paused while menu is drawn and options are changed.
+
+        Fix 1: Prompt: "For the sound adjustment in the pause menu, make the guide text appear when the sound adjustment is highlighted, in addition to when it is highlighted. Also make it so that help text has a black box drawn behind it to be easier to see. Add an options menu to the beginning menu as well."
+
+        Result: Sound controller is now satisfactory.  
+
+        Fix 2: I noticed that every once in a while, the pellet and obstacle will spawn at the same time and end up in the same grid. I added an extra check in the spawnFood method so that it detects the obstacles the same way as it detects not to spawn inside the snake. I haven't seen this bug come up again, so hopefully having both the food and the obstacles checking themselves will prevent any more overlapping.
